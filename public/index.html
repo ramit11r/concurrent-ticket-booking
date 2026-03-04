@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Bus Ticket Booking</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Segoe UI;
+background:linear-gradient(135deg,#0f172a,#020617);
+color:white;
+text-align:center;
+}
+
+h1{
+margin-top:30px;
+}
+
+.bus{
+margin:40px auto;
+width:450px;
+padding:30px;
+border-radius:20px;
+background:#111827;
+box-shadow:0 20px 40px rgba(0,0,0,0.6);
+border:3px solid #1f2937;
+}
+
+.front{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:20px;
+}
+
+.driver{
+background:#64748b;
+padding:10px 20px;
+border-radius:8px;
+font-weight:bold;
+}
+
+.door{
+background:#334155;
+padding:10px 20px;
+border-radius:8px;
+font-weight:bold;
+}
+
+.row{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin:12px 0;
+}
+
+.left,
+.right{
+display:flex;
+gap:10px;
+}
+
+.aisle{
+width:40px;
+}
+
+.seat{
+width:55px;
+height:55px;
+border-radius:10px;
+display:flex;
+align-items:center;
+justify-content:center;
+font-weight:bold;
+cursor:pointer;
+transition:0.25s;
+box-shadow:0 5px 10px rgba(0,0,0,0.4);
+}
+
+.seat:hover{
+transform:scale(1.1);
+}
+
+.FREE{
+background:#22c55e;
+}
+
+.LOCKED{
+background:#f59e0b;
+}
+
+.BOOKED{
+background:#ef4444;
+cursor:not-allowed;
+}
+
+.legend{
+margin-top:30px;
+}
+
+.legend span{
+margin:0 15px;
+}
+
+.box{
+display:inline-block;
+width:15px;
+height:15px;
+border-radius:4px;
+margin-right:6px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>🚌 Bus Ticket Booking System</h1>
+
+<div class="bus">
+
+<div class="front">
+
+<div class="door">🚪 DOOR</div>
+
+<div class="driver">👨‍✈️ DRIVER</div>
+
+</div>
+
+<div id="seats"></div>
+
+</div>
+
+<div class="legend">
+<span><div class="box" style="background:#22c55e"></div>Free</span>
+<span><div class="box" style="background:#f59e0b"></div>Locked</span>
+<span><div class="box" style="background:#ef4444"></div>Booked</span>
+</div>
+
+<div style="margin-top:20px;">
+<button onclick="resetSeats()" style="
+padding:10px 20px;
+font-size:16px;
+border:none;
+border-radius:8px;
+background:#3b82f6;
+color:white;
+cursor:pointer;
+">
+Reset Seats
+</button>
+</div>
+
+<script>
+
+let lastLockId=null;
+
+async function loadSeats(){
+
+const res=await fetch("/seats");
+const data=await res.json();
+
+const container=document.getElementById("seats");
+container.innerHTML="";
+
+for(let i=0;i<data.length;i+=4){
+
+const row=document.createElement("div");
+row.className="row";
+
+const left=document.createElement("div");
+left.className="left";
+
+const right=document.createElement("div");
+right.className="right";
+
+const aisle=document.createElement("div");
+aisle.className="aisle";
+
+const s1=createSeat(data[i]);
+const s2=createSeat(data[i+1]);
+const s3=createSeat(data[i+2]);
+const s4=createSeat(data[i+3]);
+
+left.appendChild(s1);
+left.appendChild(s2);
+
+right.appendChild(s3);
+right.appendChild(s4);
+
+row.appendChild(left);
+row.appendChild(aisle);
+row.appendChild(right);
+
+container.appendChild(row);
+
+}
+
+}
+
+function createSeat(s){
+
+const seat=document.createElement("div");
+seat.className=`seat ${s.status}`;
+seat.innerText=s.seat;
+
+if(s.status==="FREE"){
+seat.onclick=()=>lockSeat(s.seat);
+}
+
+if(s.status==="LOCKED"){
+seat.onclick=()=>confirmSeat(s.seat);
+}
+
+return seat;
+
+}
+
+async function lockSeat(seat){
+
+const res=await fetch("/lock",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({seat})
+});
+
+const data=await res.json();
+
+if(data.lockId){
+
+lastLockId=data.lockId;
+
+if(confirm(`Seat ${seat} locked. Confirm booking?`)){
+confirmSeat(seat);
+}
+
+}else{
+alert(data.msg);
+}
+
+loadSeats();
+
+}
+
+async function confirmSeat(seat){
+
+const res=await fetch("/confirm",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+seat,
+lockId:lastLockId
+})
+});
+
+const data=await res.json();
+
+alert(data.msg);
+
+loadSeats();
+
+}
+
+async function resetSeats(){
+
+const res = await fetch("/reset",{
+method:"POST"
+});
+
+const data = await res.json();
+
+alert(data.msg);
+
+loadSeats();
+
+}
+
+loadSeats();
+setInterval(loadSeats,1000);
+
+</script>
+
+</body>
+</html>
